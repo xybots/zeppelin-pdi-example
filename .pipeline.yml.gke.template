@@ -1,0 +1,46 @@
+pipeline:
+  create_cluster:
+    image: banzaicloud/plugin-pipeline-client:0.3.0
+    cluster_name: "[[your-gke-cluster-name]]"
+    cluster_provider: "google"
+    google_project: "[[your-gke-project-id]]"
+    google_gke_version: "1.9"
+    google_node_count: "2"
+
+    secrets: [plugin_endpoint, plugin_token]
+
+  install_monitoring:
+    image: banzaicloud/plugin-pipeline-client:0.3.0
+    deployment_name: "banzaicloud-stable/pipeline-cluster-monitor"
+    deployment_release_name: "monitor"
+
+    secrets: [plugin_endpoint, plugin_token]
+
+  install_zeppelin:
+    image: banzaicloud/plugin-pipeline-client:0.3.0
+    deployment_name: "banzaicloud-stable/zeppelin-spark"
+    deployment_release_name: "release-1"
+    deployment_state: "created"
+    deployment_values:
+      zeppelin:
+        sparkSubmitOptions:
+          eventLogDirectory: "gs://[[your-gs-bucket]]/"
+      historyServer:
+        enabled: true
+      spark:
+        spark-hs:
+          app:
+            logDirectory: "gs://[[your-gs-bucket]]/"
+    secrets: [plugin_endpoint, plugin_token]
+
+  remote_checkout:
+    image: banzaicloud/plugin-k8s-proxy:0.3.0
+    original_image: plugins/git
+
+  run:
+    image: banzaicloud/plugin-k8s-proxy:0.3.0
+    original_image: banzaicloud/zeppelin-client:0.3.0
+    notebook_name: "sf-police-incidents"
+    notebook_file_path: "sf-police-incidents-gke.json"
+    notebook_state: "running"
+    zeppelin_endpoint: "http://release-1-zeppelin:8080/zeppelin"
